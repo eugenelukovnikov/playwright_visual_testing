@@ -1,0 +1,6 @@
+.codesandbox/
+.devcontainer/
+__pycache__/
+.pytest_cache/
+**/screenshots/
+allure-results/
