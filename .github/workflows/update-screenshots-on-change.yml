@@ -4,6 +4,9 @@ on:
   push:
     branches: [main, master]
 
+env:
+  UPDATE_SCREENSHOTS: "true"
+
 jobs:
   update-screenshots:
     runs-on: ubuntu-latest
@@ -19,36 +22,32 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest-playwright
           playwright install
           playwright install-deps
 
-      - name: Run tests to generate reference screenshots
-        run: pytest --browser chromium
+      - name: Run tests in screenshot update mode
+        run: pytest --browser chromium --headless -k "not compare" # Исключаем тесты сравнения
 
       - name: Prepare screens branch
         run: |
           git checkout --orphan screens
           git rm -rf .
           git clean -fxd
-          echo "Initial commit" > README.md
+          echo "# Reference Screenshots" > README.md
           git add README.md
           git commit -m "Initialize screens branch"
 
-      - name: Find and copy reference screenshots
+      - name: Copy reference screenshots
         run: |
-          find . -type d -path "*/screenshots/reference" | while read dir; do
-            dest_dir="${dir}"
-            mkdir -p "${dest_dir}"
-            cp -r "${dir}"/* "${dest_dir}/"
+          find . -name "reference" -type d | while read dir; do
+            mkdir -p "screens-branch/${dir}"
+            cp -r "${dir}"/* "screens-branch/${dir}/"
           done
 
-      - name: Commit and force push to screens branch
+      - name: Commit and push
         run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
+          cd screens-branch
           git add .
-          git commit -m "Update reference screenshots [skip ci]"
+          git commit -m "Update reference screenshots"
           git push origin screens --force
