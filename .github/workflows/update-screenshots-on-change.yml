@@ -31,26 +31,36 @@ jobs:
 
       - name: Prepare screens branch
         run: |
+          # Настройка Git
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
 
-          # Создаем временную папку для скриншотов
-          mkdir -p screens/reference
+          # Создаем временную папку для новых скриншотов
+          mkdir -p temp-screenshots
+          find . -path "*/screenshots/reference/*.png" -exec cp --parents {} temp-screenshots \;
 
-          # Копируем ВСЕ скриншоты из всех проектов
-          find . -path "*/screenshots/reference/*.png" -exec cp --parents {} screens \;
+          # Переключаемся на ветку screens (создаем если нет)
+          if git show-ref --quiet refs/heads/screens; then
+            git checkout screens
+            git rm -rf . || echo "Nothing to remove"
+          else
+            git checkout --orphan screens
+          fi
 
-          # Подготавливаем ветку screens
-          git checkout --orphan screens || git checkout -f screens
-          git reset --hard
+          # Очищаем ветку полностью
+          find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
 
-          # Переносим скриншоты и очищаем временные файлы
-          mv screens/* ./
-          rm -rf screens __pycache__ allure-results
+          # Копируем новые скриншоты
+          cp -r temp-screenshots/* ./
+
+          # Очистка
+          rm -rf temp-screenshots __pycache__ allure-results
 
           # Коммит и push
           git add .
-          git commit -m "Auto-update reference screenshots"
-
-      - name: Push to screens branch
-        run: git push origin screens --force
+          if git diff-index --quiet HEAD --; then
+            echo "Нет изменений для коммита"
+          else
+            git commit -m "Auto-update reference screenshots"
+            git push origin screens --force
+          fi
