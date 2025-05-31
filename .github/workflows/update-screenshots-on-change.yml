@@ -2,8 +2,7 @@ name: Update Screenshots on Code Change
 
 on:
   push:
-    paths:
-      - "**.py"
+    branches: [main, master]
 
 jobs:
   update-screenshots:
