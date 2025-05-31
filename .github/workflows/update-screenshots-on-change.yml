@@ -35,32 +35,47 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
 
-          # Создаем временную папку для новых скриншотов
           mkdir -p temp-screenshots
-          find . -path "*/screenshots/reference/*.png" -exec cp --parents {} temp-screenshots \;
+          if find . -path "*/screenshots/reference/*.png" -exec cp --parents {} temp-screenshots \; ; then
+            echo "Скриншоты успешно скопированы во временную папку"
+          else
+            echo "Ошибка: не найдены скриншоты для копирования"
+            exit 1
+          fi
 
-          # Переключаемся на ветку screens (создаем если нет)
+          # Проверяем наличие скриншотов
+          if [ -z "$(ls -A temp-screenshots)" ]; then
+            echo "Ошибка: временная папка пуста"
+            exit 1
+          fi
+
+          # Работа с веткой screens
           if git show-ref --quiet refs/heads/screens; then
             git checkout screens
-            git rm -rf . || echo "Nothing to remove"
+            # Полностью очищаем ветку, кроме .git
+            find . -mindepth 1 ! -name '.git' -exec rm -rf {} +
           else
             git checkout --orphan screens
           fi
 
-          # Очищаем ветку полностью
-          find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
-
-          # Копируем новые скриншоты
-          cp -r temp-screenshots/* ./
+          # Копируем скриншоты
+          if [ -d "temp-screenshots" ]; then
+            cp -r temp-screenshots/* ./
+            echo "Скриншоты успешно перемещены"
+          else
+            echo "Ошибка: временная папка не существует"
+            exit 1
+          fi
 
           # Очистка
           rm -rf temp-screenshots __pycache__ allure-results
 
-          # Коммит и push
+          # Коммит
           git add .
-          if git diff-index --quiet HEAD --; then
-            echo "Нет изменений для коммита"
-          else
+          if [ -n "$(git status --porcelain)" ]; then
             git commit -m "Auto-update reference screenshots"
             git push origin screens --force
+            echo "Изменения успешно отправлены"
+          else
+            echo "Нет изменений для коммита"
           fi
