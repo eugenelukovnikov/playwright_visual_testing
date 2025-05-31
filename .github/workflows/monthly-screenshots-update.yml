@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: "0 0 1 * *" # В 00:00 1-го числа каждого месяца
 
+env:
+  UPDATE_SCREENSHOTS: "true"
+
 jobs:
   update-screenshots:
     runs-on: ubuntu-latest
@@ -19,36 +22,61 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest-playwright
           playwright install
           playwright install-deps
 
-      - name: Run tests to generate reference screenshots
+      - name: Run tests in screenshot update mode
         run: pytest --browser chromium
 
       - name: Prepare screens branch
         run: |
-          git checkout --orphan screens
-          git rm -rf .
-          git clean -fxd
-          echo "Initial commit" > README.md
-          git add README.md
-          git commit -m "Initialize screens branch"
-
-      - name: Find and copy reference screenshots
-        run: |
-          find . -type d -path "*/screenshots/reference" | while read dir; do
-            dest_dir="${dir}"
-            mkdir -p "${dest_dir}"
-            cp -r "${dir}"/* "${dest_dir}/"
-          done
-
-      - name: Commit and force push to screens branch
-        run: |
+          # Настройка Git
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
+
+          find . -path "*/screenshots/reference/*.png" -exec sh -c '
+            for filepath do
+              dest="clean-screenshots/$(dirname "$filepath")"
+              mkdir -p "$dest"
+              cp "$filepath" "$dest"
+            done
+          ' sh {} +
+
+          if ! find clean-screenshots -name '*.png' -print -quit | grep -q .; then
+            echo "Error: No screenshots found!"
+            exit 1
+          fi
+
+          if git show-ref --quiet refs/heads/screens; then
+            git checkout screens
+            find . -mindepth 1 ! -name '.git' -exec rm -rf {} +
+          else
+            git checkout --orphan screens
+            git rm -rf .
+          fi
+
+          # Копируем структуру и файлы из clean-screenshots в корень ветки
+          rsync -a clean-screenshots/ .
+
+          # Создаем минимальные файлы
+          echo "# Reference Screenshots" > README.md
+          cat > .gitignore << EOF
+          __pycache__/
+          clean-screenshots/
+          allure-results/
+          conftest.py
+          pytest.ini
+          requirements.txt
+          EOF
+
           git add .
-          git commit -m "Monthly reference screenshots update [skip ci]"
-          git push origin screens --force
+          if git diff-index --quiet HEAD --; then
+            echo "Нет изменений для коммита"
+          else
+            git commit -m "Update reference screenshots"
+            git push origin screens --force
+          fi
+
+          echo "Final branch content:"
+          find . -type f
