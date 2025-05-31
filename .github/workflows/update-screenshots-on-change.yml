@@ -35,47 +35,38 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
 
-          mkdir -p temp-screenshots
-          if find . -path "*/screenshots/reference/*.png" -exec cp --parents {} temp-screenshots \; ; then
-            echo "Скриншоты успешно скопированы во временную папку"
-          else
-            echo "Ошибка: не найдены скриншоты для копирования"
-            exit 1
-          fi
+          # Создаем чистую папку для скриншотов
+          mkdir -p all-screenshots
+          find . -path "*/screenshots/reference/*.png" -exec cp --parents {} all-screenshots \;
 
           # Проверяем наличие скриншотов
-          if [ -z "$(ls -A temp-screenshots)" ]; then
-            echo "Ошибка: временная папка пуста"
+          if [ -z "$(find all-screenshots -name '*.png')" ]; then
+            echo "Ошибка: скриншоты не найдены!"
             exit 1
           fi
 
-          # Работа с веткой screens
+          # Создаем/переключаемся на ветку screens
           if git show-ref --quiet refs/heads/screens; then
             git checkout screens
-            # Полностью очищаем ветку, кроме .git
-            find . -mindepth 1 ! -name '.git' -exec rm -rf {} +
+            git rm -rf .
           else
             git checkout --orphan screens
           fi
 
-          # Копируем скриншоты
-          if [ -d "temp-screenshots" ]; then
-            cp -r temp-screenshots/* ./
-            echo "Скриншоты успешно перемещены"
-          else
-            echo "Ошибка: временная папка не существует"
-            exit 1
-          fi
+          # Переносим ТОЛЬКО скриншоты
+          find all-screenshots -mindepth 1 -type d -exec mkdir -p {} \;
+          find all-screenshots -name '*.png' -exec mv {} . \;
 
-          # Очистка
-          rm -rf temp-screenshots __pycache__ allure-results
+          # Создаем минимальные необходимые файлы
+          echo "# Reference Screenshots" > README.md
+          echo "__pycache__/" > .gitignore
+          echo "all-screenshots/" >> .gitignore
 
-          # Коммит
+          # Коммит и push
           git add .
-          if [ -n "$(git status --porcelain)" ]; then
-            git commit -m "Auto-update reference screenshots"
-            git push origin screens --force
-            echo "Изменения успешно отправлены"
-          else
-            echo "Нет изменений для коммита"
-          fi
+          git commit -m "Update reference screenshots"
+          git push origin screens --force
+
+          # Диагностика
+          echo "Содержимое ветки screens:"
+          find . -type f
