@@ -36,7 +36,7 @@ def screenshot_helper(request, page: Page, browser_type):
             
         def capture_screenshot(self, name: str, full_page=True):
             """Только сохраняет скриншот в reference"""
-            filename = self._get_filename(name)
+            filename = self._get_filename(name, "reference")
             path = os.path.join(self.reference_dir, filename)
             page.screenshot(path=path, full_page=full_page)
             allure.attach.file(path, name=name, attachment_type=AttachmentType.PNG)
