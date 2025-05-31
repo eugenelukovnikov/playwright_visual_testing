@@ -31,29 +31,26 @@ jobs:
 
       - name: Prepare screens branch
         run: |
-          # Настройка Git
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
 
-          # Создание чистой ветки
-          git checkout --orphan screens
+          # Создаем временную папку для скриншотов
+          mkdir -p screens/reference
+
+          # Копируем ВСЕ скриншоты из всех проектов
+          find . -path "*/screenshots/reference/*.png" -exec cp --parents {} screens \;
+
+          # Подготавливаем ветку screens
+          git checkout --orphan screens || git checkout -f screens
           git reset --hard
 
-          echo -e "__pycache__/\n*.pyc\nallure-results/" > .gitignore
-
-          # Копирование скриншотов
-          find . -path "*/screenshots/reference/*.png" | while read file; do
-            # Нормализуем путь и имя файла
-            dest_path="${file#./}"
-            mkdir -p "$(dirname "screens/$dest_path")"
-            cp -v "$file" "screens/$dest_path"
-          done
+          # Переносим скриншоты и очищаем временные файлы
           mv screens/* ./
-          rm -rf screens __pycache__ allure-results screens-branch
-          # Первый коммит
-          echo "# Reference Screenshots" > README.md
+          rm -rf screens __pycache__ allure-results
+
+          # Коммит и push
           git add .
-          git commit -m "Update reference screenshots [skip ci]"
+          git commit -m "Auto-update reference screenshots"
 
       - name: Push to screens branch
         run: git push origin screens --force
