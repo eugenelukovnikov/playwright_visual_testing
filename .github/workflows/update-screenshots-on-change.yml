@@ -35,42 +35,48 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
 
-          mkdir -p clean-screenshots
           find . -path "*/screenshots/reference/*.png" -exec sh -c '
-            dest="clean-screenshots/$(dirname "{}")"
-            mkdir -p "$dest"
-            cp "{}" "$dest"
-          ' \;
+            for filepath do
+              dest="clean-screenshots/$(dirname "$filepath")"
+              mkdir -p "$dest"
+              cp "$filepath" "$dest"
+            done
+          ' sh {} +
 
-          # Проверяем что скриншоты найдены
-          if [ -z "$(find clean-screenshots -name '*.png')" ]; then
+          if ! find clean-screenshots -name '*.png' -print -quit | grep -q .; then
             echo "Error: No screenshots found!"
             exit 1
           fi
 
-          # Работа с веткой screens
           if git show-ref --quiet refs/heads/screens; then
             git checkout screens
-            # Удаляем ВСЕ кроме .git
             find . -mindepth 1 ! -name '.git' -exec rm -rf {} +
           else
             git checkout --orphan screens
+            git rm -rf .
           fi
 
-          # Переносим ТОЛЬКО структуру screenshots
-          find clean-screenshots -type d -exec mkdir -p {} \;
-          find clean-screenshots -name '*.png' -exec cp {} . \;
+          # Копируем структуру и файлы из clean-screenshots в корень ветки
+          rsync -a clean-screenshots/ .
 
           # Создаем минимальные файлы
           echo "# Reference Screenshots" > README.md
-          echo "__pycache__/" > .gitignore
-          echo "clean-screenshots/" >> .gitignore
+          cat > .gitignore << EOF
+          __pycache__/
+          clean-screenshots/
+          allure-results/
+          conftest.py
+          pytest.ini
+          requirements.txt
+          EOF
 
-          # Коммит и push
           git add .
-          git commit -m "Update reference screenshots"
-          git push origin screens --force
+          if git diff-index --quiet HEAD --; then
+            echo "Нет изменений для коммита"
+          else
+            git commit -m "Update reference screenshots"
+            git push origin screens --force
+          fi
 
-          # Диагностика
           echo "Final branch content:"
           find . -type f
