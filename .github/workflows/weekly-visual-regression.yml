@@ -71,11 +71,13 @@ jobs:
       - name: Verify Allure report
         run: |
           echo "Содержимое allure-report:"
-          ls -R allure-report || echo "Директория не найдена"
-
-          echo "Содержимое gh-pages:"
-          ls -R gh-pages || echo "Директория не найдена
-
+          ls -R allure-report  
+          [ -f allure-report/index.html ] || exit 1
+      - name: Setup gh-pages
+        run: |
+          mkdir -p gh-pages
+          cp -r allure-report/* gh-pages/
+          touch gh-pages/.nojekyll
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         if: always()
