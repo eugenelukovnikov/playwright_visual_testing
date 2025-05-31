@@ -31,8 +31,8 @@ def screenshot_helper(request, page: Page, browser_type):
             os.makedirs(self.actual_dir, exist_ok=True)  # Добавлено
             os.makedirs(self.diff_dir, exist_ok=True)    # Добавлено
         
-        def _get_filename(self, name: str) -> str:
-            return f"{self.test_name}-{name}-{self.browser_name}.png"
+        def _get_filename(self, name: str, img_type: str) -> str:
+            return f"{self.test_name}-{name}-{img_type}.png"
             
         def capture_screenshot(self, name: str, full_page=True):
             """Только сохраняет скриншот в reference"""
