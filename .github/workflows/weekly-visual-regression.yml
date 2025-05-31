@@ -68,6 +68,14 @@ jobs:
           gh_pages: gh-pages
           keep_history: true
 
+      - name: Verify Allure report
+        run: |
+          echo "Содержимое allure-report:"
+          ls -R allure-report || echo "Директория не найдена"
+
+          echo "Содержимое gh-pages:"
+          ls -R gh-pages || echo "Директория не найдена
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         if: always()
