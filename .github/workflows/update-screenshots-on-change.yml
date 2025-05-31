@@ -27,7 +27,7 @@ jobs:
           playwright install-deps
 
       - name: Run tests in screenshot update mode
-        run: pytest --browser chromium --headless -k "not compare" # Исключаем тесты сравнения
+        run: pytest --browser chromium -k "not compare" # Исключаем тесты сравнения
 
       - name: Prepare screens branch
         run: |
