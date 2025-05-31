@@ -39,17 +39,17 @@ jobs:
           git checkout --orphan screens
           git reset --hard
 
-          echo "__pycache__/" > .gitignore
-          echo "allure-results/" >> .gitignore
-          git add .gitignore
+          echo -e "__pycache__/\n*.pyc\nallure-results/" > .gitignore
 
           # Копирование скриншотов
-          find . -type d -path "*/screenshots/reference" | while read dir; do
-            # Копируем напрямую в соответствующую папку ветки screens
-            mkdir -p "${dir#./}"
-            cp -r "${dir}"/* "${dir#./}/"
+          find . -path "*/screenshots/reference/*.png" | while read file; do
+            # Нормализуем путь и имя файла
+            dest_path="${file#./}"
+            mkdir -p "$(dirname "screens/$dest_path")"
+            cp -v "$file" "screens/$dest_path"
           done
-          rm -rf __pycache__ allure-results screens-branch
+          mv screens/* ./
+          rm -rf screens __pycache__ allure-results screens-branch
           # Первый коммит
           echo "# Reference Screenshots" > README.md
           git add .
