@@ -1,9 +1,10 @@
 name: Update Screenshots on Code Change
 
 on:
+  workflow_dispatch:
   push:
     paths:
-      - "**.py"
+      - "**/*.py"
 
 env:
   UPDATE_SCREENSHOTS: "true"
