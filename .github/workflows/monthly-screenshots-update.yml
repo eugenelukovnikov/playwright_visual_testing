@@ -1,0 +1,54 @@
+name: Monthly Screenshots Update
+
+on:
+  schedule:
+    - cron: "0 0 1 * *" # В 00:00 1-го числа каждого месяца
+
+jobs:
+  update-screenshots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest-playwright
+          playwright install
+          playwright install-deps
+
+      - name: Run tests to generate reference screenshots
+        run: pytest --browser chromium --headed
+
+      - name: Prepare screens branch
+        run: |
+          git checkout --orphan screens
+          git rm -rf .
+          git clean -fxd
+          echo "Initial commit" > README.md
+          git add README.md
+          git commit -m "Initialize screens branch"
+
+      - name: Find and copy reference screenshots
+        run: |
+          find . -type d -path "*/screenshots/reference" | while read dir; do
+            dest_dir="${dir}"
+            mkdir -p "${dest_dir}"
+            cp -r "${dir}"/* "${dest_dir}/"
+          done
+
+      - name: Commit and force push to screens branch
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add .
+          git commit -m "Monthly reference screenshots update [skip ci]"
+          git push origin screens --force

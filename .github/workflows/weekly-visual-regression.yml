@@ -1,0 +1,77 @@
+name: Weekly Visual Regression Test
+
+on:
+  schedule:
+    - cron: "0 0 * * 0" # Каждое воскресенье в 00:00
+
+jobs:
+  visual-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout screens branch
+        uses: actions/checkout@v4
+        with:
+          ref: screens
+          path: screens-branch
+
+      - name: Copy reference screenshots from screens branch
+        run: |
+          # Копируем эталонные скриншоты из ветки screens
+          find screens-branch -type d -path "*/screenshots/reference" | while read dir; do
+            dest_dir="${dir#screens-branch/}"
+            mkdir -p "${dest_dir}"
+            cp -r "${dir}"/* "${dest_dir}/"
+          done
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest-playwright allure-pytest
+          playwright install
+          playwright install-deps
+
+      - name: Run visual regression tests
+        run: pytest --browser chromium --headed --alluredir=allure-results
+
+      - name: Upload Allure results
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: allure-results
+          path: allure-results/
+
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        if: always()
+        continue-on-error: true
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Generate Allure report
+        uses: simple-elf/allure-report-action@master
+        if: always()
+        with:
+          allure_results: allure-results
+          allure_report: allure-report
+          gh_pages: gh-pages
+          keep_history: true
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: always()
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: gh-pages/allure-report
+          force_orphan: true
