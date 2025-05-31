@@ -31,8 +31,8 @@ def screenshot_helper(request, page: Page, browser_type):
             os.makedirs(self.actual_dir, exist_ok=True)  # Добавлено
             os.makedirs(self.diff_dir, exist_ok=True)    # Добавлено
         
-        def _get_filename(self, name: str) -> str:
-            return f"{self.test_name}-{name}.png"
+        def _get_filename(self, name: str, img_type: str) -> str:
+            return f"{self.test_name}-{img_type}-{name}.png"
             
         def capture_screenshot(self, name: str, full_page=True):
             """Только сохраняет скриншот в reference"""
@@ -47,10 +47,10 @@ def screenshot_helper(request, page: Page, browser_type):
                 self.capture_screenshot(name, full_page)
                 pytest.skip("Updating reference screenshots")
             
-            filename = self._get_filename(name)
-            reference_path = os.path.join(self.reference_dir, filename)
-            actual_path = os.path.join(self.actual_dir, filename)  # Используем actual_dir
-            diff_path = os.path.join(self.diff_dir, filename)      # Используем diff_dir
+            
+            reference_path = os.path.join(self.reference_dir, self._get_filename(name, "reference"))
+            actual_path = os.path.join(self.actual_dir, self._get_filename(name, "actual"))
+            diff_path = os.path.join(self.diff_dir, self._get_filename(name, "diff"))
             
             # Делаем текущий скриншот
             page.screenshot(path=actual_path, full_page=full_page)
