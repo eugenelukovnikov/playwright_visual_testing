@@ -35,44 +35,42 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
 
-          # Создаем чистую папку для скриншотов
-          mkdir -p all-screenshots
-          find . -path "*/screenshots/reference/*.png" -exec cp --parents {} all-screenshots \;
+          mkdir -p clean-screenshots
+          find . -path "*/screenshots/reference/*.png" -exec sh -c '
+            dest="clean-screenshots/$(dirname "{}")"
+            mkdir -p "$dest"
+            cp "{}" "$dest"
+          ' \;
 
-          # Проверяем наличие скриншотов
-          if [ -z "$(find all-screenshots -name '*.png')" ]; then
-            echo "Ошибка: скриншоты не найдены!"
+          # Проверяем что скриншоты найдены
+          if [ -z "$(find clean-screenshots -name '*.png')" ]; then
+            echo "Error: No screenshots found!"
             exit 1
           fi
 
-          # Создаем/переключаемся на ветку screens
+          # Работа с веткой screens
           if git show-ref --quiet refs/heads/screens; then
             git checkout screens
-            git rm -rf .
+            # Удаляем ВСЕ кроме .git
+            find . -mindepth 1 ! -name '.git' -exec rm -rf {} +
           else
             git checkout --orphan screens
           fi
 
-          # Переносим ТОЛЬКО скриншоты
-          find all-screenshots -mindepth 1 -type d -exec mkdir -p {} \;
-          find all-screenshots -name '*.png' -exec mv {} . \;
+          # Переносим ТОЛЬКО структуру screenshots
+          find clean-screenshots -type d -exec mkdir -p {} \;
+          find clean-screenshots -name '*.png' -exec cp {} . \;
 
-          # Создаем минимальные необходимые файлы
+          # Создаем минимальные файлы
           echo "# Reference Screenshots" > README.md
-          cat > .gitignore << EOF
-          __pycache__/
-          all-screenshots/
-          allure-results/
-          conftest.py
-          pytest.ini
-          requirements.txt
-          .github/
-          EOF
+          echo "__pycache__/" > .gitignore
+          echo "clean-screenshots/" >> .gitignore
+
           # Коммит и push
           git add .
           git commit -m "Update reference screenshots"
           git push origin screens --force
 
           # Диагностика
-          echo "Содержимое ветки screens:"
+          echo "Final branch content:"
           find . -type f
