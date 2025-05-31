@@ -59,9 +59,15 @@ jobs:
 
           # Создаем минимальные необходимые файлы
           echo "# Reference Screenshots" > README.md
-          echo "__pycache__/" > .gitignore
-          echo "all-screenshots/" >> .gitignore
-
+          cat > .gitignore << EOF
+          __pycache__/
+          all-screenshots/
+          allure-results/
+          conftest.py
+          pytest.ini
+          requirements.txt
+          .github/
+          EOF
           # Коммит и push
           git add .
           git commit -m "Update reference screenshots"
