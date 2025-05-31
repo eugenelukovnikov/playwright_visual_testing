@@ -41,7 +41,7 @@ jobs:
           playwright install-deps
 
       - name: Run visual regression tests
-        run: pytest --browser chromium --headed --alluredir=allure-results
+        run: pytest --browser chromium --alluredir=allure-results
 
       - name: Upload Allure results
         uses: actions/upload-artifact@v4

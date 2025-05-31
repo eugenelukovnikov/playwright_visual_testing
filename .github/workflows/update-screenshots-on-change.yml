@@ -26,7 +26,7 @@ jobs:
           playwright install-deps
 
       - name: Run tests to generate reference screenshots
-        run: pytest --browser chromium --headed
+        run: pytest --browser chromium
 
       - name: Prepare screens branch
         run: |
