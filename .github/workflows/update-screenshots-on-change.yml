@@ -27,27 +27,28 @@ jobs:
           playwright install-deps
 
       - name: Run tests in screenshot update mode
-        run: pytest --browser chromium -k "not compare" # Исключаем тесты сравнения
+        run: pytest --browser chromium
 
       - name: Prepare screens branch
         run: |
-          git checkout --orphan screens
-          git rm -rf .
-          git clean -fxd
-          echo "# Reference Screenshots" > README.md
-          git add README.md
-          git commit -m "Initialize screens branch"
+          # Настройка Git
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
 
-      - name: Copy reference screenshots
-        run: |
-          find . -name "reference" -type d | while read dir; do
+          # Создание чистой ветки
+          git checkout --orphan screens
+          git reset --hard
+
+          # Копирование скриншотов
+          find . -type d -path "*/screenshots/reference" | while read dir; do
             mkdir -p "screens-branch/${dir}"
             cp -r "${dir}"/* "screens-branch/${dir}/"
           done
 
-      - name: Commit and push
-        run: |
-          cd screens-branch
+          # Первый коммит
+          echo "# Reference Screenshots" > README.md
           git add .
-          git commit -m "Update reference screenshots"
-          git push origin screens --force
+          git commit -m "Update reference screenshots [skip ci]"
+
+      - name: Push to screens branch
+        run: git push origin screens --force
