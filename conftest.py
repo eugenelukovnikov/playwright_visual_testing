@@ -11,6 +11,8 @@ from pixelmatch.contrib.PIL import pixelmatch
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(PROJECT_ROOT)
 
+def is_screenshots_update():
+    return os.getenv('UPDATE_SCREENSHOTS') == 'true'
 
 @pytest.fixture(scope="function")
 def screenshot_helper(request, page: Page, browser_type):
@@ -21,46 +23,39 @@ def screenshot_helper(request, page: Page, browser_type):
             self.test_dir = os.path.dirname(request.fspath.strpath)
             self.screenshots_dir = os.path.join(self.test_dir, "screenshots")
             self.reference_dir = os.path.join(self.screenshots_dir, "reference")
-            
-            os.makedirs(self.reference_dir, exist_ok=True)
-        
+            self.actual_dir = os.path.join(self.screenshots_dir, "actual")  # Добавлено
+            self.diff_dir = os.path.join(self.screenshots_dir, "diff")     # Добавлено
             
             # Создаем все необходимые директории
             os.makedirs(self.reference_dir, exist_ok=True)
-            os.makedirs(self.actual_dir, exist_ok=True)
-            os.makedirs(self.diff_dir, exist_ok=True)
+            os.makedirs(self.actual_dir, exist_ok=True)  # Добавлено
+            os.makedirs(self.diff_dir, exist_ok=True)    # Добавлено
         
-        def _get_filename(self, name: str, img_type: str) -> str:
-            """Генерирует имя файла в формате: {test_name}-{name}-{img_type}-{browser}.png"""
-            return f"{self.test_name}-{name}-{img_type}-{self.browser_name}.png"
-
+        def _get_filename(self, name: str) -> str:
+            return f"{self.test_name}-{name}-{self.browser_name}.png"
+            
         def capture_screenshot(self, name: str, full_page=True):
-            """Только сохраняет скриншот, без сравнения"""
+            """Только сохраняет скриншот в reference"""
             filename = self._get_filename(name)
             path = os.path.join(self.reference_dir, filename)
             page.screenshot(path=path, full_page=full_page)
             allure.attach.file(path, name=name, attachment_type=AttachmentType.PNG)
-
+            
         def take_and_compare(self, name: str, full_page=True, threshold=0.1):
             """Сравнивает текущий скриншот с эталонным"""
             if is_screenshots_update():
                 self.capture_screenshot(name, full_page)
                 pytest.skip("Updating reference screenshots")
             
-            # Генерируем пути к файлам
             filename = self._get_filename(name)
             reference_path = os.path.join(self.reference_dir, filename)
-            actual_path = os.path.join(self.screenshots_dir, "actual", filename)
-            diff_path = os.path.join(self.screenshots_dir, "diff", filename)
-            
-            # Создаем директории при необходимости
-            os.makedirs(os.path.dirname(actual_path), exist_ok=True)
-            os.makedirs(os.path.dirname(diff_path), exist_ok=True)
+            actual_path = os.path.join(self.actual_dir, filename)  # Используем actual_dir
+            diff_path = os.path.join(self.diff_dir, filename)      # Используем diff_dir
             
             # Делаем текущий скриншот
             page.screenshot(path=actual_path, full_page=full_page)
             allure.attach.file(actual_path, name="Actual: " + name, 
-                            attachment_type=AttachmentType.PNG)
+                             attachment_type=AttachmentType.PNG)
             
             # Проверяем существование эталонного скриншота
             if not os.path.exists(reference_path):
@@ -70,38 +65,28 @@ def screenshot_helper(request, page: Page, browser_type):
             img_ref = Image.open(reference_path)
             img_actual = Image.open(actual_path)
             allure.attach.file(reference_path, name="Reference: " + name,
-                            attachment_type=AttachmentType.PNG)
+                             attachment_type=AttachmentType.PNG)
             
             # Проверяем совпадение размеров
             if img_ref.size != img_actual.size:
                 pytest.fail(f"Screenshot sizes differ: {img_ref.size} vs {img_actual.size}")
             
-            # Быстрая проверка без создания diff-изображения
+            # Сравниваем изображения
+            diff_img = Image.new("RGBA", img_ref.size)
             mismatch = pixelmatch(
                 img_ref, 
                 img_actual,
-                None,  # Не создаем diff пока
+                diff_img,
                 threshold=threshold,
-                includeAA=False,
-                fail_fast=True
+                includeAA=False
             )
             
-            # Если есть различия - создаем diff-изображение
+            # Если есть различия - сохраняем diff
             if mismatch > 0:
-                diff_img = Image.new("RGBA", img_ref.size)
-                pixelmatch(
-                    img_ref,
-                    img_actual,
-                    diff_img,
-                    threshold=threshold,
-                    includeAA=False
-                )
                 diff_img.save(diff_path)
                 allure.attach.file(diff_path, name="Diff: " + name,
-                                attachment_type=AttachmentType.PNG)
-                
-                pytest.fail(f"Screenshots differ by {mismatch} pixels. "
-                        f"See diff: {diff_path}")
+                                 attachment_type=AttachmentType.PNG)
+                pytest.fail(f"Screenshots differ by {mismatch} pixels")
             
             return True
             
