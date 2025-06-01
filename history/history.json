@@ -1,0 +1,1 @@
+{"1bf6f2a94369588780dbc47851d0b8af":{"statistic":{"failed":0,"broken":0,"skipped":0,"passed":1,"unknown":0,"total":1},"items":[{"uid":"f5753de51022e313","reportUrl":"https://eugenelukovnikov.github.io/playwright_visual_testing/5//#testresult/f5753de51022e313","status":"passed","time":{"start":1748743913976,"stop":1748743946282,"duration":32306}}]}}
