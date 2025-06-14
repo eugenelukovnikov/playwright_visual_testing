@@ -12,6 +12,33 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(PROJECT_ROOT)
 
 
+@pytest.fixture
+def scrolled_page(page: Page):
+    """Фикстура для загрузки и полной прокрутки страницы"""
+    def _scrolled_page(url: str, scroll_step: int = 250, scroll_delay: int = 1500):
+        # Загрузка страницы
+        page.goto(url, wait_until="load")
+        
+        # Прокрутка
+        scroll_height = page.evaluate("document.body.scrollHeight")
+        current_position = 0
+
+        while current_position < scroll_height:
+            page.evaluate(f"window.scrollTo(0, {current_position})")
+            page.wait_for_timeout(scroll_delay)
+            current_position += scroll_step
+            scroll_height = page.evaluate("document.body.scrollHeight")
+
+        # Финальная прокрутка
+        page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+        page.wait_for_timeout(4000)
+        
+        return page
+    
+    return _scrolled_page
+
+
+
 def is_screenshots_update():
     return os.getenv('UPDATE_SCREENSHOTS') == 'true'
 
@@ -20,9 +47,11 @@ def is_screenshots_update():
 def screenshot_helper(request, page: Page, browser_type):
     class ScreenshotHelper:
         def __init__(self):
+
             self.test_name = request.node.name
             self.browser_name = browser_type.name
             self.test_dir = os.path.dirname(request.fspath.strpath)
+            self.folder_name = os.path.basename(self.test_dir)
             self.screenshots_dir = os.path.join(self.test_dir, "screenshots")
             self.reference_dir = os.path.join(
                 self.screenshots_dir, "reference")
@@ -35,7 +64,7 @@ def screenshot_helper(request, page: Page, browser_type):
             os.makedirs(self.diff_dir, exist_ok=True)
 
         def _get_filename(self, name: str, img_type: str) -> str:
-            return f"{self.test_name}-{img_type}-{name}.png"
+            return f"{self.folder_name}-{self.test_name}-{img_type}-{name}.png"
 
         def capture_screenshot(self, name: str, full_page=True):
             """Только сохраняет скриншот в reference"""
