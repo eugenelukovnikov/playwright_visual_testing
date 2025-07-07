@@ -15,10 +15,16 @@ sys.path.append(PROJECT_ROOT)
 @pytest.fixture
 def scrolled_page(page: Page):
     """Фикстура для загрузки и полной прокрутки страницы"""
-    def _scrolled_page(url: str, scroll_step: int = 250, scroll_delay: int = 1500):
+    def _scrolled_page(url: str, scroll_step: int = 250, scroll_delay: int = 1500, slider_stop=None, widgets_delete=None):
         # Загрузка страницы
-        page.goto(url, wait_until="load")
-        
+        try:
+            page.goto(url, wait_until="load")
+        except:
+            print("Таймаут при загрузке страницы, продолжаем исполнение...")
+
+        if slider_stop:
+            page.evaluate(slider_stop)
+
         # Прокрутка
         scroll_height = page.evaluate("document.body.scrollHeight")
         current_position = 0
@@ -32,11 +38,18 @@ def scrolled_page(page: Page):
         # Финальная прокрутка
         page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
         page.wait_for_timeout(4000)
-        
-        return page
-    
-    return _scrolled_page
 
+        if widgets_delete:
+            selectors = [widgets_delete] if isinstance(
+                widgets_delete, str) else widgets_delete
+            for selector in selectors:
+                elements = page.query_selector_all(selector)
+                for el in elements:
+                    el.evaluate("el => el.remove()")
+
+        return page
+
+    return _scrolled_page
 
 
 def is_screenshots_update():
