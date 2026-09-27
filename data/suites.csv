@@ -1,0 +1,4 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"","173162","test_homepage[chromium]","river-travel.ru","2026-09-27","failed","2026-09-27","","test_river_travel","",""
+"","59733","test_homepage[chromium]","globalclinic.su","2026-09-27","failed","2026-09-27","","test_globalclinic","",""
+"","47826","test_homepage[chromium]","klinika-innomed.ru","2026-09-27","failed","2026-09-27","","test_klinika_innomed","",""
