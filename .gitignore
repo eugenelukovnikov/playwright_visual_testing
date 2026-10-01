@@ -1,0 +1,6 @@
+__pycache__/
+clean-screenshots/
+allure-results/
+conftest.py
+pytest.ini
+requirements.txt
